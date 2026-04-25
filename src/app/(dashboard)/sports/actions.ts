@@ -61,3 +61,25 @@ export async function cancelBooking(bookingId: string) {
   revalidatePath("/dashboard");
   return { success: true };
 }
+
+export async function updateBookingStatus(bookingId: string, status: "approved" | "rejected") {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "غير مصرح لك بالقيام بهذا الإجراء" };
+
+  // Note: RLS ensures only sports_dept (or admins if configured) can update.
+  const { error } = await supabase
+    .from("sports_bookings")
+    .update({ status })
+    .eq("id", bookingId);
+
+  if (error) return { error: "حدث خطأ أثناء تحديث حالة الحجز" };
+
+  revalidatePath("/sports");
+  revalidatePath("/dashboard");
+  return { success: true };
+}

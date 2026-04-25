@@ -20,7 +20,7 @@ export default async function SportsPage() {
 
   let bookingsQuery = supabase
     .from("sports_bookings")
-    .select("*, sports_facilities(name)")
+    .select("*, sports_facilities(name), profiles(full_name)")
     .order("booking_date", { ascending: false });
 
   if (profile?.role === "student") {
@@ -33,6 +33,7 @@ export default async function SportsPage() {
     <SportsClient 
       facilities={facilities || []} 
       userBookings={userBookings || []} 
+      userRole={profile?.role}
     />
   );
 }

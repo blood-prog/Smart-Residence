@@ -1,17 +1,20 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useTransition } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { BookingModal } from "./booking-modal";
-import { Trophy, Clock, Plus, CalendarIcon, Info } from "lucide-react";
+import { Trophy, Clock, Plus, CalendarIcon, Info, Check, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cancelBooking, updateBookingStatus } from "./actions";
+import { toast } from "sonner";
 
 gsap.registerPlugin(useGSAP);
 
-export function SportsClient({ facilities, userBookings }: { facilities: any[], userBookings: any[] }) {
+export function SportsClient({ facilities, userBookings, userRole }: { facilities: any[], userBookings: any[], userRole?: string }) {
+  const [isPending, startTransition] = useTransition();
   const container = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
@@ -120,7 +123,7 @@ export function SportsClient({ facilities, userBookings }: { facilities: any[], 
         <div className="space-y-6">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <span className="p-2 bg-primary/10 text-primary rounded-xl"><Clock className="w-5 h-5" /></span>
-            سجل حجوزاتك
+            {userRole === 'sports_dept' ? 'إدارة الحجوزات' : 'سجل حجوزاتك'}
           </h2>
 
           <div className="space-y-4">
@@ -129,7 +132,12 @@ export function SportsClient({ facilities, userBookings }: { facilities: any[], 
                 <CardContent className="p-5">
                   <div className="flex justify-between items-start mb-4">
                     <div className="space-y-1.5">
-                      <p className="font-bold text-base group-hover:text-primary transition-colors">{booking.sports_facilities?.name}</p>
+                      <p className="font-bold text-base group-hover:text-primary transition-colors">
+                        {booking.sports_facilities?.name}
+                        {userRole === 'sports_dept' && booking.profiles?.full_name && (
+                          <span className="text-xs text-muted-foreground block mt-1">طالب: {booking.profiles.full_name}</span>
+                        )}
+                      </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md w-fit">
                         <CalendarIcon className="w-3.5 h-3.5 text-primary/70" />
                         <span>{booking.booking_date}</span>
@@ -147,8 +155,58 @@ export function SportsClient({ facilities, userBookings }: { facilities: any[], 
                   </div>
                   <div className="flex items-center justify-between mt-4">
                     <span className="bg-primary/5 text-primary font-mono text-sm px-3 py-1.5 rounded-lg border border-primary/10" dir="ltr">{booking.time_slot}</span>
-                    {booking.status === 'pending' && (
-                      <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-white hover:bg-destructive rounded-lg transition-all">
+                    
+                    {booking.status === 'pending' && userRole === 'sports_dept' && (
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          disabled={isPending}
+                          onClick={() => {
+                            startTransition(async () => {
+                              const res = await updateBookingStatus(booking.id, 'approved');
+                              if (res.error) toast.error(res.error);
+                              else toast.success("تم قبول الحجز بنجاح");
+                            });
+                          }}
+                          className="h-8 text-green-600 hover:text-white hover:bg-green-600 rounded-lg transition-all"
+                        >
+                          <Check className="w-4 h-4 ml-1" />
+                          قبول
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          disabled={isPending}
+                          onClick={() => {
+                            startTransition(async () => {
+                              const res = await updateBookingStatus(booking.id, 'rejected');
+                              if (res.error) toast.error(res.error);
+                              else toast.success("تم رفض الحجز");
+                            });
+                          }}
+                          className="h-8 text-destructive hover:text-white hover:bg-destructive rounded-lg transition-all"
+                        >
+                          <X className="w-4 h-4 ml-1" />
+                          رفض
+                        </Button>
+                      </div>
+                    )}
+
+                    {booking.status === 'pending' && userRole === 'student' && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={isPending}
+                        onClick={() => {
+                          startTransition(async () => {
+                            const res = await cancelBooking(booking.id);
+                            if (res.error) toast.error(res.error);
+                            else toast.success("تم إلغاء الحجز بنجاح");
+                          });
+                        }}
+                        className="h-8 text-destructive hover:text-white hover:bg-destructive rounded-lg transition-all"
+                      >
                         إلغاء الحجز
                       </Button>
                     )}
